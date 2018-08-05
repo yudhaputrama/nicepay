@@ -128,8 +128,8 @@ func (c CartData) String() string {
 }
 
 type RegistrationResponse struct {
-	ResultCd				string			`json:"resultCd"`
-	ResultMsg				string			`json:"resultMsg"`
+	ResultCode				string			`json:"resultCd"`
+	ResultMessage			string			`json:"resultMsg"`
 	TransactionID			string			`json:"tXid"`
 	ReferenceNo				string			`json:"referenceNo"`
 	PayMethod				PaymentMethod	`json:"payMethod"`

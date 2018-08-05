@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"encoding/hex"
 	"os"
+	"errors"
 )
 
 type ErrorCredential struct {
@@ -127,33 +128,75 @@ func (c *Client) checkCredential() error {
 	return nil
 }
 
-func (c *Client) Registration(request *RegistrationRequest) (*RegistrationResponse, *http.Response, error) {
+func (c *Client) Registration(request *RegistrationRequest) (*RegistrationResponse, error) {
 	u, err := url.Parse("/nicepay/direct/v2/registration")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
+	if request.MerchantId == "" {
+		request.MerchantId = c.MerchantId
+	}
 
 	// Skip generate merchant token if defined manual
 	if request.MerchantToken == "" {
 		err = c.GenerateMerchantToken(request)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
+	}
+
+	if request.PayMethod == "" {
+		return nil, errors.New("PayMethod must be defined")
+	}
+
+	if request.PayMethod == MethodVirtualAccount {
+		if request.Bank == "" {
+			return nil, errors.New("Bank must be defined")
+		}
+		if request.VirtualAccountValidTime == "" {
+			return nil, errors.New("ValidTime must be defined")
+		}
+		if request.VirtualAccountValidDate == "" {
+			return nil, errors.New("ValidDate must be defined")
+		}
+	} else if request.PayMethod == MethodCreditCard {
+		if request.InstallmentType == 0 {
+			return nil, errors.New("InstallmentType must be defined")
+		}
+		if request.InstallmentMonth == 0 {
+			return nil, errors.New("InstallmentMonth must be defined")
+		}
+	} else if request.PayMethod == MethodConvenienceStore {
+
+	} else {
+		return nil, errors.New("PayMethod not supported")
+	}
+
+	if request.Currency == "" {
+		return nil, errors.New("Currency must be defined")
+	}
+
+	if request.Amount == 0 {
+		return nil, errors.New("Amount must be greater than amount")
 	}
 
 	req, err := c.NewRequest("POST", u.String(), request)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	createRes := &RegistrationResponse{}
 	resp, err := c.Do(req, createRes)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return createRes, resp, err
+	if resp.StatusCode != 200 {
+		return nil, errors.New("Request failed")
+	}
+
+	return createRes, err
 }
 
 func (c *Client) PaymentCreditCard(request *PaymentRequest) (*http.Response, error){
@@ -185,6 +228,14 @@ func (c *Client) PaymentCreditCard(request *PaymentRequest) (*http.Response, err
 	})
 
 	return resp, err
+}
+
+func (c *Client) StatusTransaction(request *StatusRequest) (*StatusResponse, error){
+	return &StatusResponse{}, nil
+}
+
+func (c *Client) CancelTransaction(request *CancelRequest) (*CancelResponse, error){
+	return &CancelResponse{}, nil
 }
 
 type ErrorGenerateMerchantToken struct {
